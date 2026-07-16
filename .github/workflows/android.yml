@@ -26,11 +26,16 @@ jobs:
       - name: Accept Android SDK licenses
         run: yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Decode and create xed.keystore
-        run: echo "${{ secrets.KEYSTORE }}" | base64 -d > /tmp/xed.keystore
-
-      - name: Decode and create signing.properties
-        run: echo "${{ secrets.PROP }}" | base64 -d > /tmp/signing.properties
+      - name: Generate Keystore and Properties from Env
+        env:
+          MY_PASS: ${{ secrets.APP_SIGNING_PASSWORD }}
+        run: |
+          keytool -genkeypair -v -keystore /tmp/xed.keystore -alias xedkey -keyalg RSA -keysize 2048 -validity 10000 -storepass "${{ env.MY_PASS }}" -keypass "${{ env.MY_PASS }}" -dname "CN=DarknessPL, O=AppSystem, C=PL"
+          cat <<EOF > /tmp/signing.properties
+          keyAlias=xedkey
+          keyPassword=${{ env.MY_PASS }}
+          storePassword=${{ env.MY_PASS }}
+          EOF
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
