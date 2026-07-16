@@ -23,6 +23,32 @@ object AppSystemManager {
 
     fun getOutputDir(context: Context): File = getAppRoot(context).resolve(OUTPUT).apply { if (!exists()) mkdirs() }
 
+    fun getInterpreterFile(context: Context): File = getAppsDir(context).resolve(INTERPRETER)
+
+    fun getSessionLogFile(context: Context, sessionId: String): File {
+        val safeSessionId = sessionId.replace(Regex("[^a-zA-Z0-9_.-]"), "_")
+        return getOutputDir(context).resolve("session_$safeSessionId.log")
+    }
+
+    fun findPluginDirectory(context: Context, pluginName: String): File? {
+        val pluginDir = getPluginsDir(context).resolve(pluginName)
+        return if (pluginDir.exists() && pluginDir.isDirectory) pluginDir else null
+    }
+
+    fun resolvePluginLoaderFile(pluginDir: File, loader: String?): File {
+        return if (!loader.isNullOrBlank()) {
+            val loaderFile = File(loader)
+            if (loaderFile.isAbsolute) loaderFile else pluginDir.resolve(loader)
+        } else {
+            pluginDir.resolve("loader.yml")
+        }
+    }
+
+    fun writeOutput(context: Context, logName: String, message: String) {
+        val outFile = getOutputDir(context).resolve(logName)
+        outFile.appendText("$message\n")
+    }
+
     fun ensureAppSystemDirectories(context: Context) {
         getLibsDir(context)
         getAppsDir(context)

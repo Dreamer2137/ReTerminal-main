@@ -83,6 +83,7 @@ dependencies {
     implementation(libs.anrwatchdog)
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.palette)
+    implementation("dev.rikka.shizuku:api:12.1.0")
 
     implementation(project(":core:resources"))
     implementation(project(":core:components"))
