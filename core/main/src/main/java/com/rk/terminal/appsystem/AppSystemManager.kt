@@ -113,159 +113,159 @@ object AppSystemManager {
 
     private fun appSystemInterpreter(context: Context): String {
         val appRoot = getAppRoot(context).absolutePath
-        return """
-            #!/system/bin/sh
-            APP_SYSTEM_ROOT="${appRoot}"
-            APP_SYSTEM_APPS="${appRoot}/apps"
-            APP_SYSTEM_PLUGINS="${appRoot}/apps/plugins"
-            APP_SYSTEM_LIBS="${appRoot}/libs"
-            APP_SYSTEM_OUTPUT="${appRoot}/data/output"
-            prompt() { printf "app-system> " ; }
-            format_entry() { printf "  %s\n" "$$1" ; }
-            list_plugins() {
-              for file in "$$APP_SYSTEM_PLUGINS"/*; do
-                [ -e "$$file" ] || continue
-                if [ -d "$$file" ]; then
-                  format_entry "$(basename "$$file")/"
-                elif [ -f "$$file" ] && [ -x "$$file" ]; then
-                  format_entry "$(basename "$$file")"
-                elif [ -f "$$file" ] && [ "$${file##*.}" = "sh" ]; then
-                  format_entry "$(basename "$$file")"
-                fi
-              done
-            }
-            list_libs() {
-              for file in "$$APP_SYSTEM_LIBS"/*.so; do
-                [ -e "$$file" ] || continue
-                format_entry "$(basename "$$file")"
-              done
-            }
-            help_text() {
-              cat <<'EOF'
-            Available commands:
-              list-plugins   List executable plugins and scripts
-              list-libs      List shared libraries in libs
-              run-plugin     Execute a plugin by directory name
-              help           Show this help
-              shell          Launch Shizuku-backed Android shell with injected environment
-            EOF
-            }
-            run_shell() {
-              export PATH="$$PATH:$$APP_SYSTEM_APPS:$$APP_SYSTEM_PLUGINS"
-              export LD_LIBRARY_PATH="$$LD_LIBRARY_PATH:$$APP_SYSTEM_LIBS"
-              chmod +x "$$APP_SYSTEM_APPS"/* "$$APP_SYSTEM_PLUGINS"/* 2>/dev/null
-              if command -v app-system-remote-shell.sh >/dev/null 2>&1; then
-                exec app-system-remote-shell.sh
-              fi
-              exec /system/bin/sh
-            }
-            run_plugin() {
-              if [ -z "$$1" ]; then
-                printf "Usage: run-plugin [name]\n"
-                return 1
-              fi
-              plugin_name="$$1"
-              plugin_dir="$$APP_SYSTEM_PLUGINS/$$plugin_name"
-              if [ ! -d "$$plugin_dir" ]; then
-                printf "AppSystem Error: Plugin directory not found: %s\n" "$$plugin_name"
-                return 2
-              fi
-              loader_file="$$plugin_dir/plugin.yml"
-              if [ -f "$$loader_file" ]; then
-                loader_path=$(grep -E '^loader:' "$$loader_file" | awk '{print $2}' | tr -d '"')
-                if [ -n "$$loader_path" ]; then
-                  loader_file="$$plugin_dir/$$loader_path"
-                else
-                  loader_file="$$plugin_dir/loader.yml"
-                fi
-              else
-                loader_file="$$plugin_dir/loader.yml"
-              fi
-              if [ ! -f "$$loader_file" ]; then
-                printf "AppSystem Error: loader.yml not found for plugin %s\n" "$$plugin_name"
-                return 3
-              fi
-              exec_path=$(grep -E '^exec:' "$$loader_file" | awk '{for (i=2; i<=NF; i++) printf "%s%s", $$i, (i<NF?" ":"\n")}' | sed 's/^ *//;s/ *$//' | tr -d '"')
-              if [ -z "$$exec_path" ]; then
-                printf "AppSystem Error: exec is required in loader.yml\n"
-                return 4
-              fi
-              if [ "$${exec_path#/}" = "$$exec_path" ]; then
-                resolved_exec="$$plugin_dir/$$exec_path"
-              else
-                resolved_exec="$$exec_path"
-              fi
-              if [ -f "$$resolved_exec" ]; then
-                chmod +x "$$resolved_exec" 2>/dev/null
-              fi
-              args=()
-              while IFS= read -r line; do
-                if echo "$$line" | grep -qE '^args:'; then
-                  continue
-                fi
-                if echo "$$line" | grep -qE '^- '; then
-                  arg=$(echo "$$line" | sed -E 's/^- //')
-                  if [ "$${arg#/}" = "$$arg" ]; then
-                    arg="$$plugin_dir/$$arg"
-                  fi
-                  args+=("$$arg")
-                fi
-              done < <(grep -nE '^(args:|- )' "$$loader_file")
-              envs=()
-              while IFS= read -r line; do
-                if echo "$$line" | grep -qE '^[[:space:]]*[^ ]+: '; then
-                  key=$(echo "$$line" | awk -F: '{print $$1}' | tr -d '[:space:]')
-                  value=$(echo "$$line" | cut -d: -f2- | sed 's/^ *//;s/ *$//' | tr -d '"')
-                  envs+=("$$key=$$value")
-                fi
-              done < <(grep -nE '^(env:|[[:space:]]+[^ ]+: )' "$$loader_file")
-              export PATH="$$PATH:$$APP_SYSTEM_APPS:$$APP_SYSTEM_PLUGINS"
-              export LD_LIBRARY_PATH="$$LD_LIBRARY_PATH:$$APP_SYSTEM_LIBS"
-              eval "$${envs[*]}"
-              if [ -n "$$resolved_exec" ] && [ -f "$$resolved_exec" ]; then
-                exec_cmd="$$resolved_exec"
-              else
-                exec_cmd="$$exec_path"
-              fi
-              printf "Launching plugin %s...\n" "$$plugin_name"
-              "$$exec_cmd" "${args[@]}"
-            }
-            while true; do
-              prompt
-              if ! IFS= read -r line; then
-                break
-              fi
-              case "$$line" in
-                list-plugins) list_plugins ;;
-                list-libs) list_libs ;;
-                help) help_text ;;
-                shell) run_shell ;;
-                run-plugin*)
-                  plugin_name=$${line#run-plugin }
-                  run_plugin "$$plugin_name"
-                  ;;
-                "") continue ;;
-                *) printf "Unknown command: %s\n" "$$line" ;;
-              esac
-            done
-        """.trimIndent()
+        return buildString {
+            appendLine("#!/system/bin/sh")
+            appendLine("APP_SYSTEM_ROOT=\"$appRoot\"")
+            appendLine("APP_SYSTEM_APPS=\"$appRoot/apps\"")
+            appendLine("APP_SYSTEM_PLUGINS=\"$appRoot/apps/plugins\"")
+            appendLine("APP_SYSTEM_LIBS=\"$appRoot/libs\"")
+            appendLine("APP_SYSTEM_OUTPUT=\"$appRoot/data/output\"")
+            appendLine("prompt() { printf \"app-system> \" ; }")
+            appendLine("format_entry() { printf \"  %s\\n\" \$1 ; }")
+            appendLine("list_plugins() {")
+            appendLine("  for file in \$APP_SYSTEM_PLUGINS/*; do")
+            appendLine("    [ -e \$file ] || continue")
+            appendLine("    if [ -d \$file ]; then")
+            appendLine("      format_entry \"$(basename \$file)/\"")
+            appendLine("    elif [ -f \$file ] && [ -x \$file ]; then")
+            appendLine("      format_entry \"$(basename \$file)\"")
+            appendLine("    elif [ -f \$file ] && [ \${file##*.} = \"sh\" ]; then")
+            appendLine("      format_entry \"$(basename \$file)\"")
+            appendLine("    fi")
+            appendLine("  done")
+            appendLine("}")
+            appendLine("list_libs() {")
+            appendLine("  for file in \$APP_SYSTEM_LIBS/*.so; do")
+            appendLine("    [ -e \$file ] || continue")
+            appendLine("    format_entry \"$(basename \$file)\"")
+            appendLine("  done")
+            appendLine("}")
+            appendLine("help_text() {")
+            appendLine("cat <<'EOF'")
+            appendLine("Available commands:")
+            appendLine("  list-plugins   List executable plugins and scripts")
+            appendLine("  list-libs      List shared libraries in libs")
+            appendLine("  run-plugin     Execute a plugin by directory name")
+            appendLine("  help           Show this help")
+            appendLine("  shell          Launch Shizuku-backed Android shell with injected environment")
+            appendLine("EOF")
+            appendLine("}")
+            appendLine("run_shell() {")
+            appendLine("  export PATH=\"\$PATH:\$APP_SYSTEM_APPS:\$APP_SYSTEM_PLUGINS\"")
+            appendLine("  export LD_LIBRARY_PATH=\"\$LD_LIBRARY_PATH:\$APP_SYSTEM_LIBS\"")
+            appendLine("  chmod +x \"\$APP_SYSTEM_APPS\"/* \"\$APP_SYSTEM_PLUGINS\"/* 2>/dev/null")
+            appendLine("  if command -v app-system-remote-shell.sh >/dev/null 2>&1; then")
+            appendLine("    exec app-system-remote-shell.sh")
+            appendLine("  fi")
+            appendLine("  exec /system/bin/sh")
+            appendLine("}")
+            appendLine("run_plugin() {")
+            appendLine("  if [ -z \"\$1\" ]; then")
+            appendLine("    printf \"Usage: run-plugin [name]\\n\"")
+            appendLine("    return 1")
+            appendLine("  fi")
+            appendLine("  plugin_name=\"\$1\"")
+            appendLine("  plugin_dir=\"\$APP_SYSTEM_PLUGINS/\$plugin_name\"")
+            appendLine("  if [ ! -d \"\$plugin_dir\" ]; then")
+            appendLine("    printf \"AppSystem Error: Plugin directory not found: %s\\n\" \"\$plugin_name\"")
+            appendLine("    return 2")
+            appendLine("  fi")
+            appendLine("  loader_file=\"\$plugin_dir/plugin.yml\"")
+            appendLine("  if [ -f \"\$loader_file\" ]; then")
+            appendLine("    loader_path=$(grep -E '^loader:' \"\$loader_file\" | awk '{print $2}' | tr -d '\"')")
+            appendLine("    if [ -n \"\$loader_path\" ]; then")
+            appendLine("      loader_file=\"\$plugin_dir/\$loader_path\"")
+            appendLine("    else")
+            appendLine("      loader_file=\"\$plugin_dir/loader.yml\"")
+            appendLine("    fi")
+            appendLine("  else")
+            appendLine("    loader_file=\"\$plugin_dir/loader.yml\"")
+            appendLine("  fi")
+            appendLine("  if [ ! -f \"\$loader_file\" ]; then")
+            appendLine("    printf \"AppSystem Error: loader.yml not found for plugin %s\\n\" \"\$plugin_name\"")
+            appendLine("    return 3")
+            appendLine("  fi")
+            appendLine("  exec_path=$(grep -E '^exec:' \"\$loader_file\" | awk '{for (i=2; i<=NF; i++) printf \"%s%s\", \$i, (i<NF?\" \":\"\\n\")}' | sed 's/^ *//;s/ *$//' | tr -d '\"')")
+            appendLine("  if [ -z \"\$exec_path\" ]; then")
+            appendLine("    printf \"AppSystem Error: exec is required in loader.yml\\n\"")
+            appendLine("    return 4")
+            appendLine("  fi")
+            appendLine("  if [ \"\${exec_path#/}\" = \"\$exec_path\" ]; then")
+            appendLine("    resolved_exec=\"\$plugin_dir/\$exec_path\"")
+            appendLine("  else")
+            appendLine("    resolved_exec=\"\$exec_path\"")
+            appendLine("  fi")
+            appendLine("  if [ -f \"\$resolved_exec\" ]; then")
+            appendLine("    chmod +x \"\$resolved_exec\" 2>/dev/null")
+            appendLine("  fi")
+            appendLine("  args=()")
+            appendLine("  while IFS= read -r line; do")
+            appendLine("    if echo \"\$line\" | grep -qE '^args:'; then")
+            appendLine("      continue")
+            appendLine("    fi")
+            appendLine("    if echo \"\$line\" | grep -qE '^- '; then")
+            appendLine("      arg=$(echo \"\$line\" | sed -E 's/^- //')")
+            appendLine("      if [ \"\${arg#/}\" = \"\$arg\" ]; then")
+            appendLine("        arg=\"\$plugin_dir/\$arg\"")
+            appendLine("      fi")
+            appendLine("      args+=(\"\$arg\")")
+            appendLine("    fi")
+            appendLine("  done < <(grep -nE '^(args:|- )' \"\$loader_file\")")
+            appendLine("  envs=()")
+            appendLine("  while IFS= read -r line; do")
+            appendLine("    if echo \"\$line\" | grep -qE '^[[:space:]]*[^ ]+: '; then")
+            appendLine("      key=$(echo \"\$line\" | awk -F: '{print \$1}' | tr -d '[:space:]')")
+            appendLine("      value=$(echo \"\$line\" | cut -d: -f2- | sed 's/^ *//;s/ *$//' | tr -d '\"')")
+            appendLine("      envs+=(\"\$key=\$value\")")
+            appendLine("    fi")
+            appendLine("  done < <(grep -nE '^(env:|[[:space:]]+[^ ]+: )' \"\$loader_file\")")
+            appendLine("  export PATH=\"\$PATH:\$APP_SYSTEM_APPS:\$APP_SYSTEM_PLUGINS\"")
+            appendLine("  export LD_LIBRARY_PATH=\"\$LD_LIBRARY_PATH:\$APP_SYSTEM_LIBS\"")
+            appendLine("  eval \"\${envs[*]}\"")
+            appendLine("  if [ -n \"\$resolved_exec\" ] && [ -f \"\$resolved_exec\" ]; then")
+            appendLine("    exec_cmd=\"\$resolved_exec\"")
+            appendLine("  else")
+            appendLine("    exec_cmd=\"\$exec_path\"")
+            appendLine("  fi")
+            appendLine("  printf \"Launching plugin %s...\\n\" \"\$plugin_name\"")
+            appendLine("  \"\$exec_cmd\" \"\${args[@]}\"")
+            appendLine("}")
+            appendLine("while true; do")
+            appendLine("  prompt")
+            appendLine("  if ! IFS= read -r line; then")
+            appendLine("    break")
+            appendLine("  fi")
+            appendLine("  case \"\$line\" in")
+            appendLine("    list-plugins) list_plugins ;;")
+            appendLine("    list-libs) list_libs ;;")
+            appendLine("    help) help_text ;;")
+            appendLine("    shell) run_shell ;;")
+            appendLine("    run-plugin*")
+            appendLine("      plugin_name=\${line#run-plugin }")
+            appendLine("      run_plugin \"\$plugin_name\"")
+            appendLine("      ;;")
+            appendLine("    \"\") continue ;;")
+            appendLine("    *) printf \"Unknown command: %s\\n\" \"\$line\" ;;")
+            appendLine("  esac")
+            appendLine("done")
+        }
     }
 
     private fun appSystemRemoteShell(context: Context): String {
         val appRoot = getAppRoot(context).absolutePath
-        return """
-            #!/system/bin/sh
-            APP_SYSTEM_ROOT="${appRoot}"
-            APP_SYSTEM_APPS="${appRoot}/apps"
-            APP_SYSTEM_PLUGINS="${appRoot}/apps/plugins"
-            APP_SYSTEM_LIBS="${appRoot}/libs"
-            export PATH="$$PATH:$$APP_SYSTEM_APPS:$$APP_SYSTEM_PLUGINS"
-            export LD_LIBRARY_PATH="$$LD_LIBRARY_PATH:$$APP_SYSTEM_LIBS"
-            chmod +x "$$APP_SYSTEM_APPS"/* "$$APP_SYSTEM_PLUGINS"/* 2>/dev/null
-            if command -v shizuku >/dev/null 2>&1; then
-              exec shizuku sh -c "export PATH=\$$PATH:$$APP_SYSTEM_APPS:\$$APP_SYSTEM_PLUGINS; export LD_LIBRARY_PATH=\$$LD_LIBRARY_PATH:$$APP_SYSTEM_LIBS; exec /system/bin/sh"
-            fi
-            exec /system/bin/sh
-        """.trimIndent()
+        return buildString {
+            appendLine("#!/system/bin/sh")
+            appendLine("APP_SYSTEM_ROOT=\"$appRoot\"")
+            appendLine("APP_SYSTEM_APPS=\"$appRoot/apps\"")
+            appendLine("APP_SYSTEM_PLUGINS=\"$appRoot/apps/plugins\"")
+            appendLine("APP_SYSTEM_LIBS=\"$appRoot/libs\"")
+            appendLine("export PATH=\"\$PATH:\$APP_SYSTEM_APPS:\$APP_SYSTEM_PLUGINS\"")
+            appendLine("export LD_LIBRARY_PATH=\"\$LD_LIBRARY_PATH:\$APP_SYSTEM_LIBS\"")
+            appendLine("chmod +x \"\$APP_SYSTEM_APPS\"/* \"\$APP_SYSTEM_PLUGINS\"/* 2>/dev/null")
+            appendLine("if command -v shizuku >/dev/null 2>&1; then")
+            appendLine("  exec shizuku sh -c \"export PATH=\\\$PATH:\$APP_SYSTEM_APPS:\\\$APP_SYSTEM_PLUGINS; export LD_LIBRARY_PATH=\\\$LD_LIBRARY_PATH:\$APP_SYSTEM_LIBS; exec /system/bin/sh\"")
+            appendLine("fi")
+            appendLine("exec /system/bin/sh")
+        }
     }
 }
