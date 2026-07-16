@@ -19,6 +19,7 @@ import com.rk.libcommons.dpToPx
 import com.rk.libcommons.localDir
 import com.rk.settings.Settings
 import com.rk.terminal.appsystem.AppSystemSessionProvider
+import com.rk.terminal.ui.screens.settings.WorkingMode
 import com.rk.terminal.service.SessionService
 import com.rk.terminal.ui.activities.terminal.MainActivity
 import com.rk.terminal.ui.screens.terminal.virtualkeys.*
