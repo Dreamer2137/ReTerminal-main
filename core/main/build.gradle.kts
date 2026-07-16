@@ -79,7 +79,7 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.utilcode)
-    implementation(libs.snakeyamlEngine)
+    implementation(libs.snakeyaml.engine)
     implementation(libs.anrwatchdog)
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.palette)
